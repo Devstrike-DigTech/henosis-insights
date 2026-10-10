@@ -134,7 +134,10 @@ public object HenosisInsights {
         synchronized(clients) {
             val key = "${config.writeKey}|${config.sdkName}"
             clients[key]?.let {
-                worker.shutdown()
+                try {
+                    worker.shutdown() // the new worker is not needed; the running stream is returned
+                } catch (_: Throwable) {
+                }
                 return it
             }
             val engine = Engine(config, platform, transport, worker, clock, startupGraceMs)

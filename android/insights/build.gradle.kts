@@ -92,7 +92,7 @@ publishing {
             pom {
                 name.set("Henosis Insights for Android")
                 description.set("Integration telemetry for SDK vendors, with no end-user data.")
-                url.set("https://github.com/devstrike/henosis-insights")
+                url.set("https://github.com/Devstrike-DigTech/henosis-insights")
                 licenses {
                     license {
                         name.set("Apache-2.0")

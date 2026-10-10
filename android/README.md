@@ -5,35 +5,25 @@ Kotlin stdlib, no permission beyond `INTERNET`, under 100 KB (enforced by `./gra
 
 ## Add it to your SDK
 
+Step-by-step, with compile-ready snippets: [`docs/integration-guide.md`](../docs/integration-guide.md#a-native-android-sdk).
+In short:
+
 ```kotlin
-object AcmePayments {
-    private lateinit var insights: InsightsClient
-
-    fun init(context: Context, apiKey: String) {
-        insights = HenosisInsights.start(
-            context,
-            InsightsConfig(
-                writeKey = "hi_live_…",                    // from the Insights dashboard
-                sdkName = "acme-payments",
-                sdkVersion = BuildConfig.VERSION,
-                customerKey = sha256(apiKey),               // a HASH of your customer's key, never the key
-                sdkPackagePrefixes = listOf("com.acme.payments."), // only these frames are ever reported
-                requiredPermissions = listOf("android.permission.CAMERA"),
-            ),
-        )
-    }
-
-    fun charge(amount: Long): Result {
-        insights.countCall("charge")
-        insights.checkWorkerThread("charge")          // records a failure if called on the main thread
-        insights.check(HealthCheck.InitBeforeUse(ok = initialized))
-        try { … } catch (e: GatewayException) {
-            insights.reportError("charge", code = "CARD_DECLINED_CONFIG", throwable = e)
-        }
-    }
-
-    @Deprecated("Use charge()") fun chargeLegacy() { insights.markDeprecated("chargeLegacy"); … }
-}
+val insights = HenosisInsights.start(
+    context,
+    InsightsConfig(
+        writeKey = "hi_live_…",                              // from the Insights dashboard
+        sdkName = "acme-payments",
+        sdkVersion = "4.2.0",
+        customerKey = sha256(apiKey),                        // a HASH of your customer's key, never the key
+        sdkPackagePrefixes = listOf("com.acme.payments."),   // only these frames are ever reported
+    ),
+)
+insights.countCall("charge")
+insights.reportError("charge", code = "CARD_DECLINED_CONFIG", throwable = e)
+insights.check(HealthCheck.InitBeforeUse(ok = true))        // once, or when the result changes
+insights.markDeprecated("chargeLegacy")
+insights.flush()                                           // asks for an upload now; returns immediately
 ```
 
 `HenosisInsights.countCall(…)` and the other static calls work too, as long as only one SDK in the host

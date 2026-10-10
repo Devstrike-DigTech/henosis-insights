@@ -13,6 +13,15 @@ Out of scope for v0.1 (CLAUDE.md section 8). Each item here is deliberately not 
 | Method latency timing | adds payload and a privacy review item; call counts come first | TBD |
 | SSO | magic-link auth first | Enterprise plan |
 
+Launch tasks (after the design-partner phase):
+
+- Publish the clients: `com.devstrike.henosis:insights` to Maven Central, `insights_dart` to pub.dev,
+  `@devstrike/insights-js` to npm. Until then partners install from mavenLocal, the Git path and a packed
+  tarball (integration guide, "Getting the client libraries").
+- Deploy the ingest behind a CDN that sets a country header, and the dashboard and alerts with Resend
+  over SMTP.
+- Lawyer review of `privacy/DATA.md`, the data-safety answers and the privacy manifest.
+
 Decisions deferred inside v0.1:
 
 - Per-event timestamps: events carry no `at`; the batch `sentAt` is the event time and `calls` has its own window. Revisit if dashboards need sub-batch ordering.

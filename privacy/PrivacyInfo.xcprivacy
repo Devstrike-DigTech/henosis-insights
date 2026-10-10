@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Henosis Insights: privacy manifest template.
+
+  For SDK vendors shipping to iOS. Merge these entries into your SDK's own PrivacyInfo.xcprivacy:
+  through a Flutter plugin or React Native package that uses insights_dart / @devstrike/insights-js
+  today, or with the native Swift client planned for v0.2.
+
+  - No tracking and no tracking domains.
+  - Crash data: SDK error codes and stack frames from the SDK's own code only.
+  - Other diagnostic data: SDK call counts, health and start-up checks, deprecated-method counts.
+  - Neither is linked to the user's identity: no user, device or advertising identifier is collected.
+  - No required-reason APIs: the clients read no file timestamps, disk space, boot time or keyboard
+    data, and do not use UserDefaults. (If your SDK passes Insights a storage adapter backed by
+    UserDefaults, declare NSPrivacyAccessedAPICategoryUserDefaults with reason CA92.1 for your SDK.)
+
+  See privacy/DATA.md for the full list. Have your privacy counsel review before shipping.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeCrashData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

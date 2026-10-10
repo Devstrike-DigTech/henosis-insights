@@ -6,7 +6,7 @@
   "author": "Devstrike Digital Limited",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devstrike/henosis-insights.git",
+    "url": "git+https://github.com/Devstrike-DigTech/henosis-insights.git",
     "directory": "js/insights-js"
   },
   "keywords": [

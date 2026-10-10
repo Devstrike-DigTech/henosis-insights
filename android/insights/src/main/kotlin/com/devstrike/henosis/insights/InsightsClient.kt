@@ -54,6 +54,20 @@ public class InsightsClient internal constructor(
         guard { engine?.flush() }
     }
 
+    /**
+     * Uploads now and waits up to [timeoutMs] for the attempt to finish. Returns true if it finished.
+     * For tests and explicit shutdown paths only: it blocks, so **never call it on the main thread**.
+     */
+    @JvmOverloads
+    public fun flushBlocking(timeoutMs: Long = 5_000): Boolean =
+        try {
+            val e = engine ?: return false
+            e.flush()
+            e.awaitIdle(timeoutMs)
+        } catch (_: Throwable) {
+            false
+        }
+
     /** Whether this stream is collecting (started, not opted out, sampled in). */
     public fun isEnabled(): Boolean =
         try {

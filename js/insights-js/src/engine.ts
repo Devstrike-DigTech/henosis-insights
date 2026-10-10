@@ -272,6 +272,7 @@ export class Engine {
       const host = await this.read(HOST_ENABLED_KEY);
       if (host === 'false') this.hostEnabled = false;
       this.active = await this.resolveMode();
+      this.log(`mode: ${this.active}`);
       if (this.bridged) {
         // The native client owns storage, sampling, init and heartbeat. Register the wrapper now.
         this.enabled = this.config.bridge != null && this.computeEnabled();
@@ -556,6 +557,7 @@ export class Engine {
         if (result.kind === 'accepted') {
           this.lastUploadAt = now;
           this.nextAttemptAt = 0;
+          this.log(`uploaded ${take} events`);
         } else {
           this.log(`batch rejected with ${result.status}; ${take} events dropped`);
         }

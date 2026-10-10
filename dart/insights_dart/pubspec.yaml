@@ -3,8 +3,8 @@ description: >-
   Henosis Insights client for Dart and Flutter SDKs. Integration telemetry for SDK vendors with no
   end-user data. Pure Dart: no Flutter or plugin dependency, works on mobile, web, desktop and server.
 version: 0.1.0
-repository: https://github.com/devstrike/henosis-insights/tree/main/dart/insights_dart
-issue_tracker: https://github.com/devstrike/henosis-insights/issues
+repository: https://github.com/Devstrike-DigTech/henosis-insights/tree/main/dart/insights_dart
+issue_tracker: https://github.com/Devstrike-DigTech/henosis-insights/issues
 topics: [telemetry, sdk, privacy]
 
 environment:

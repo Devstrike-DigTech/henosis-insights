@@ -252,6 +252,7 @@ final class Engine {
       final host = await _read(hostEnabledKey);
       if (host == 'false') _hostEnabled = false;
       _active = await _resolveMode();
+      log('mode: ${_active!.name}');
       if (_bridged) {
         // The native client owns storage, sampling, init and heartbeat. Register the wrapper now.
         _enabled = config.bridge != null && _computeEnabled();
@@ -540,6 +541,7 @@ final class Engine {
         if (result is Accepted) {
           _lastUploadAt = now;
           _nextAttemptAt = 0;
+          log('uploaded $take events');
         } else if (result is Rejected) {
           log('batch rejected with ${result.status}; $take events dropped');
         }

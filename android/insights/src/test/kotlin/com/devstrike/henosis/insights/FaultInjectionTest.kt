@@ -171,6 +171,20 @@ class FaultInjectionTest {
     }
 
     @Test
+    fun `flushBlocking waits for the upload and never throws`() {
+        val transport = FakeTransport()
+        val client = start(transport = transport, worker = ExecutorWorker())
+        client.countCall("charge")
+        assertTrue(client.flushBlocking(5_000))
+        assertTrue(transport.kinds().contains("calls"))
+        assertFalse(InsightsClient.NOOP.flushBlocking(10))
+        // Starting the same SDK again returns the running stream, even if the spare worker misbehaves.
+        assertTrue(start(worker = RejectingWorker()) === client)
+        HenosisInsights.resetForTests()
+        start(platform = ExplodingPlatform(), worker = RejectingWorker()).flushBlocking(10) // must not throw
+    }
+
+    @Test
     fun `concurrent callers lose no counts`() {
         val transport = FakeTransport()
         val worker = ExecutorWorker()

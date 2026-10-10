@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Chat web example</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 40rem; padding: 0 1rem; }
+      code, pre { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 4px; }
+      button { font: inherit; padding: 0.4rem 0.8rem; margin-right: 0.5rem; }
+      #status { white-space: pre-wrap; }
+    </style>
+    <!-- Serve the js/ folder (e.g. `python3 -m http.server 5173` inside js/) and open
+         /examples/web/. The import map stands in for a bundler. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@devstrike/insights-js": "../../insights-js/dist/esm/index.js",
+          "@acme/chat": "../acme-chat/index.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Acme Chat on a web page</h1>
+    <p>This page uses the <code>@acme/chat</code> SDK, which reports integration telemetry through
+      Henosis Insights. Nothing about the visitor is sent.</p>
+    <p>
+      <button id="send">Send a message</button>
+      <button id="fail">Send to a missing room</button>
+      <button id="flush">Flush now</button>
+    </p>
+    <pre id="status">starting…</pre>
+    <script type="module">
+      import { AcmeChat } from '@acme/chat';
+
+      const params = new URLSearchParams(location.search);
+      const status = document.getElementById('status');
+      const log = (line) => (status.textContent += `\n${line}`);
+
+      AcmeChat.init({
+        apiKey: params.get('apiKey') ?? 'sk_test_web_shop',
+        insightsEndpoint: params.get('endpoint') ?? 'http://127.0.0.1:8787/v1/batches',
+        storage: window.localStorage,
+      });
+      AcmeChat.connect();
+      document.getElementById('send').onclick = () => log(`sent: ${AcmeChat.sendMessage('lobby', 'hi')}`);
+      document.getElementById('fail').onclick = () => log(`sent: ${AcmeChat.sendMessage('', 'secret text')}`);
+      document.getElementById('flush').onclick = async () => {
+        await AcmeChat.flushTelemetry();
+        log('flushed');
+      };
+
+      if (params.has('auto')) {
+        AcmeChat.sendMessage('lobby', 'hi');
+        AcmeChat.sendMessage('', 'secret text');
+        AcmeChat.sendMessageSync('lobby', 'legacy');
+        await AcmeChat.flushTelemetry();
+        log('auto scenario flushed');
+        document.body.dataset.done = 'true';
+      }
+      status.textContent = status.textContent.replace('starting…', 'ready');
+    </script>
+  </body>
+</html>

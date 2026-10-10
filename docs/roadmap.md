@@ -19,3 +19,7 @@ Decisions deferred inside v0.1:
 - Country: resolved only from an edge header the CDN sets. No GeoIP database inside the ingest.
 - Wi-Fi detection on Android uses `ACCESS_NETWORK_STATE` only if the host app already holds it; otherwise the client falls back to the 6-hour upload interval.
 - Multiple Insights-enabled SDKs in one app: supported through the per-SDK handle `start()` returns. The static calls from CLAUDE.md section 4 apply only while one SDK is running; with several they are dropped instead of misattributed.
+- `app.id` is optional in schema v1. A pure-JS React Native package cannot read the host app's bundle id without native code, so it omits it (bridged mode in M4 gets it from the native client). Vendors can pass `platform: { appId }` when they know it.
+- Pure Dart and TypeScript clients cannot see Wi-Fi state, so they upload on SDK activity every 6 hours, on `flush()`, and when a web page is hidden. With the default in-memory storage the first activity of each launch also uploads; vendors who want fewer uploads plug in persistent storage.
+- The ingest allows CORS from any origin (no cookies; the write key is the gate) so web pages and Flutter web can post.
+

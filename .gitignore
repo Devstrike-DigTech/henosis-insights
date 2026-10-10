@@ -23,3 +23,19 @@ dist/
 
 # Internal planning documents (pricing, launch plan). Never publish in this public repo.
 *.pdf
+
+# fvm
+.fvm/
+
+# Example app build outputs
+dart/**/build/
+js/examples/react-native-app/android/app/build/
+js/examples/react-native-app/android/.gradle/
+js/examples/react-native-app/ios/Pods/
+js/examples/react-native-app/ios/build/
+js/examples/react-native-app/vendor/
+*.xcuserstate
+xcuserdata/
+
+# Local Claude Code config (machine-specific paths)
+.claude/

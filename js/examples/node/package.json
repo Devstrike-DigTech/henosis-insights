@@ -1,0 +1,13 @@
+{
+  "name": "acme-support-bot",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Example Node service using the @acme/chat SDK, which reports through Henosis Insights.",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@acme/chat": "file:../acme-chat"
+  }
+}

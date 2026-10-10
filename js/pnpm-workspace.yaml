@@ -1,0 +1,10 @@
+packages:
+  - insights-js
+  - examples/acme-chat
+  - examples/node
+# examples/react-native-app is installed with npm on its own (React Native's Metro and pnpm symlinks
+# do not mix); it consumes the packages as packed copies, like a real app would.
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@types/node@24.19.2'

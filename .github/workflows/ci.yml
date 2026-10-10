@@ -28,3 +28,56 @@ jobs:
         with:
           name: android-test-reports
           path: android/**/build/reports/
+
+  js:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: js
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: js/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: js/.nvmrc
+          cache: pnpm
+          cache-dependency-path: js/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Build (ESM + CJS + types)
+        run: pnpm build
+      - name: Typecheck
+        run: pnpm typecheck
+      # Unit tests, payloads validated against schema/v1.json, fault injection, platform detection.
+      - name: Test
+        run: pnpm test
+      - name: Size budget
+        run: pnpm size
+
+  dart:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dart/insights_dart
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1.8.1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed -l 120 lib test tool
+      - name: Analyze
+        run: dart analyze --fatal-infos
+      # VM and Chrome: payloads validated against schema/v1.json, fault injection, fetch and dart:io transports.
+      - name: Test (VM and Chrome)
+        run: dart test -p vm,chrome
+      - name: Size budget
+        run: dart run tool/check_size.dart
+      - name: Analyze the example SDK
+        working-directory: dart/examples/acme_kyc
+        run: dart pub get && dart analyze --fatal-infos
+

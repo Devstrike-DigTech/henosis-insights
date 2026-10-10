@@ -1,0 +1,11 @@
+name: acme_kyc
+description: Fictional pure-Dart identity-verification SDK showing how a vendor embeds Henosis Insights.
+version: 1.8.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  insights_dart:
+    path: ../../insights_dart

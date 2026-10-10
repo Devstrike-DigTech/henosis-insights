@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+
+# Android
+local.properties
+*.aar.tmp
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Dart / JS (M3)
+.dart_tool/
+node_modules/
+dist/
+
+# OS
+.DS_Store
+
+# Internal planning documents (pricing, launch plan). Never publish in this public repo.
+*.pdf

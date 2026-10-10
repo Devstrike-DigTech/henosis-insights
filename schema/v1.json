@@ -1,0 +1,396 @@
+{
+  "$id": "https://insights.henosis.dev/schema/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A batch of integration telemetry sent by a Henosis Insights client. Contains no end-user data. Every object is closed: fields not listed here are rejected.",
+  "properties": {
+    "app": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9@][A-Za-z0-9._:/-]*$",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9+._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "client": {
+      "additionalProperties": false,
+      "properties": {
+        "lang": {
+          "enum": [
+            "kotlin",
+            "dart",
+            "ts"
+          ],
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "native",
+            "bridged",
+            "direct"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9+._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lang",
+        "version",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "customerKey": {
+      "pattern": "^[A-Za-z0-9_-]{8,128}$",
+      "type": "string"
+    },
+    "device": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "enum": [
+            "phone",
+            "tablet",
+            "desktop"
+          ],
+          "type": "string"
+        },
+        "os": {
+          "enum": [
+            "android",
+            "ios",
+            "web",
+            "macos",
+            "windows",
+            "linux",
+            "node",
+            "other"
+          ],
+          "type": "string"
+        },
+        "osVersion": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9+._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os"
+      ],
+      "type": "object"
+    },
+    "events": {
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "ok"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              "kind": {
+                "const": "init",
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "ok",
+              "checks"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "counts": {
+                "additionalProperties": {
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_$][A-Za-z0-9_.$-]{0,127}$",
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "from": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "calls",
+                "type": "string"
+              },
+              "to": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "from",
+              "to",
+              "counts"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$",
+                "type": "string"
+              },
+              "frames": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cls": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z_$@][A-Za-z0-9_.$<>/@-]*$",
+                      "type": "string"
+                    },
+                    "fn": {
+                      "maxLength": 128,
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z_$<][A-Za-z0-9_.$<>-]*$",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 10000000,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "cls",
+                    "fn",
+                    "line"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "kind": {
+                "const": "error",
+                "type": "string"
+              },
+              "layer": {
+                "enum": [
+                  "native",
+                  "wrapper"
+                ],
+                "type": "string"
+              },
+              "method": {
+                "pattern": "^[A-Za-z_$][A-Za-z0-9_.$-]{0,127}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "method",
+              "code",
+              "layer",
+              "frames"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "check": {
+                "pattern": "^[a-z][a-z0-9_]{0,63}$",
+                "type": "string"
+              },
+              "detail": {
+                "enum": [
+                  "missing",
+                  "invalid_format",
+                  "not_initialized",
+                  "wrong_thread",
+                  "permission_missing",
+                  "unsupported_platform",
+                  "other"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "const": "health",
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "check",
+              "ok"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "kind": {
+                "const": "deprecated",
+                "type": "string"
+              },
+              "method": {
+                "pattern": "^[A-Za-z_$][A-Za-z0-9_.$-]{0,127}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "method",
+              "count"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "heartbeat",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema": {
+      "const": 1,
+      "type": "number"
+    },
+    "sdk": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9+._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "sentAt": {
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "type": "string"
+    },
+    "wrapper": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "native",
+            "flutter",
+            "react-native",
+            "web",
+            "node",
+            "other"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9+._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "writeKey": {
+      "pattern": "^hi_(live|test)_[a-f0-9]{32}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "writeKey",
+    "client",
+    "sdk",
+    "wrapper",
+    "customerKey",
+    "app",
+    "device",
+    "sentAt",
+    "events"
+  ],
+  "title": "Henosis Insights batch (schema v1)",
+  "type": "object"
+}

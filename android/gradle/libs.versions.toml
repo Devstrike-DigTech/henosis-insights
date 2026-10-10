@@ -1,0 +1,22 @@
+# Versions verified against Google Maven, Maven Central and the Gradle Plugin Portal on 2026-10-10.
+[versions]
+agp = "9.4.1"
+kotlin = "2.4.21"
+junit = "6.1.3"
+robolectric = "4.17"
+robolectricJunit5 = "0.9.0"
+orgJson = "20260814"
+jsonSchemaValidator = "3.0.8"
+
+[libraries]
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+robolectric-junit5 = { module = "tech.apter.junit5.jupiter:robolectric-extension", version.ref = "robolectricJunit5" }
+org-json = { module = "org.json:json", version.ref = "orgJson" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }

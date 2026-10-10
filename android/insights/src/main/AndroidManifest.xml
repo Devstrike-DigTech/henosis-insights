@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The only permission Henosis Insights needs. ACCESS_NETWORK_STATE is used only if the host app
+         already declares it (to prefer Wi-Fi for uploads); it is never requested here. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

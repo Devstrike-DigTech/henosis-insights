@@ -8,4 +8,12 @@ library;
 
 export 'src/api.dart' show HenosisInsights, InsightsClient;
 export 'src/types.dart'
-    show HealthCheck, HealthDetail, InsightsConfig, InsightsStorage, MemoryInsightsStorage, PlatformInfo;
+    show
+        BridgeTransport,
+        HealthCheck,
+        HealthDetail,
+        InsightsConfig,
+        InsightsMode,
+        InsightsStorage,
+        MemoryInsightsStorage,
+        PlatformInfo;

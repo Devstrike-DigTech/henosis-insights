@@ -21,5 +21,8 @@ Decisions deferred inside v0.1:
 - Multiple Insights-enabled SDKs in one app: supported through the per-SDK handle `start()` returns. The static calls from CLAUDE.md section 4 apply only while one SDK is running; with several they are dropped instead of misattributed.
 - `app.id` is optional in schema v1. A pure-JS React Native package cannot read the host app's bundle id without native code, so it omits it (bridged mode in M4 gets it from the native client). Vendors can pass `platform: { appId }` when they know it.
 - Pure Dart and TypeScript clients cannot see Wi-Fi state, so they upload on SDK activity every 6 hours, on `flush()`, and when a web page is hidden. With the default in-memory storage the first activity of each launch also uploads; vendors who want fewer uploads plug in persistent storage.
+- On a session's start the native client holds its first automatic upload for up to 5 s unless it already knows its wrapper, so a first launch of a wrapped app is tagged correctly from the first batch. A native-only app's first upload therefore waits for SDK activity after those 5 s (or a `flush()`).
+- Bridged mode: the native client owns sampling, storage, init and heartbeat; the wrapper forwards calls, deprecated uses, wrapper-layer errors and health checks. Count each method once (see docs/bridge-protocol.md).
+- The Henosis `telemetry:` hook (generated wrappers using bridged mode automatically) is implemented in the Henosis repo, on top of the bridge API here.
 - The ingest allows CORS from any origin (no cookies; the write key is the gate) so web pages and Flutter web can post.
-
+- SDK stack frames in R8-minified host apps: obfuscated class names cannot be matched to `sdkPackagePrefixes` and are dropped, unless the vendor SDK keeps its names via consumer rules (documented). De-obfuscation with uploaded mapping files is a later option.

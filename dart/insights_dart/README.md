@@ -29,6 +29,25 @@ insights.markDeprecated('startLegacy');
 
 Prefer the handle `start()` returns over the static calls (they apply only while one SDK uses Insights).
 
+## Inside a Flutter wrapper of a native SDK (bridged mode)
+
+If your package wraps a native Android SDK that already embeds `insights-android`, pass a bridge over
+your plugin's MethodChannel and start the client after the native SDK's init. The default `auto` mode
+then forwards everything to the native client, so the app sends one stream, tagged `flutter`:
+
+```dart
+await _channel.invokeMethod('init', …);           // the native SDK starts its Insights client
+final insights = HenosisInsights.start(InsightsConfig(
+  writeKey: …, sdkName: 'acme-payments',           // the native SDK's write key and name
+  sdkVersion: nativeVersion, wrapperVersion: '2.0.3',
+  customerKey: HenosisInsights.hashCustomerKey(apiKey),
+  bridge: MyChannelBridge(_channel),                // implements BridgeTransport
+));
+```
+
+Errors you report from the wrapper are tagged `layer: wrapper`. See `docs/bridge-protocol.md` and
+`examples/wrapped-sdk/flutter`.
+
 ## What it detects, without plugins
 
 | Where | `wrapper.kind` | `app.id` | `osVersion` |

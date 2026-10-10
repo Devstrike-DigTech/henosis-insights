@@ -29,6 +29,28 @@ insights.markDeprecated('sendMessageSync');
 Prefer the handle `start()` returns. The static `HenosisInsights.countCall(…)` etc. only apply while
 one SDK in the app uses Insights; with several they are dropped rather than credited to the wrong SDK.
 
+## Inside a React Native wrapper of a native SDK (bridged mode)
+
+If your package wraps a native Android SDK that already embeds `insights-android`, pass a bridge over
+your TurboModule and start the client after the native SDK's init. The default `auto` mode then
+forwards everything to the native client, so the app sends one stream, tagged `react-native`:
+
+```ts
+await NativeAcme.init(apiKey, writeKey, endpoint); // the native SDK starts its Insights client
+const insights = HenosisInsights.start({
+  writeKey, sdkName: 'acme-payments',                // the native SDK's write key and name
+  sdkVersion: NATIVE_VERSION, wrapperVersion: '0.9.4',
+  customerKey: hashCustomerKey(apiKey),
+  bridge: {
+    isNativeRunning: (k, s) => NativeAcme.insightsIsRunning(k, s),
+    send: (m) => NativeAcme.insightsForward(m),
+  },
+});
+```
+
+Errors you report from the wrapper are tagged `layer: wrapper`. See `docs/bridge-protocol.md` and
+`examples/wrapped-sdk/react-native`.
+
 ## What it detects
 
 | Where | `wrapper.kind` | `device.os` | `app.id` |

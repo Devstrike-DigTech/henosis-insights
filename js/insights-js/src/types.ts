@@ -39,6 +39,20 @@ export interface InsightsStorage {
   removeItem(key: string): void | Promise<void>;
 }
 
+/** How the client reports. See docs/bridge-protocol.md. */
+export type InsightsMode = 'auto' | 'direct' | 'bridged';
+
+/**
+ * Supplied by a wrapper package (a React Native module around a native SDK) over its own
+ * TurboModule. The native side calls `HenosisInsights.bridge.isRunning` / `.receive`.
+ */
+export interface BridgeTransport {
+  /** Whether the native Insights client runs for this write key and SDK. */
+  isNativeRunning(writeKey: string, sdkName: string): boolean | Promise<boolean>;
+  /** Deliver one bridge message (JSON, schema/bridge-v1.json) to the native client. */
+  send(message: string): void | Promise<void>;
+}
+
 export interface InsightsConfig {
   /** Identifies the vendor's SDK project (`hi_live_…` / `hi_test_…`). */
   writeKey: string;
@@ -65,4 +79,8 @@ export interface InsightsConfig {
   platform?: Partial<PlatformInfo>;
   /** Log Insights' own failures to the console. Never logs payload contents. */
   debug?: boolean;
+  /** `auto` by default: bridged inside a wrapper whose native SDK runs Insights, otherwise direct. */
+  mode?: InsightsMode;
+  /** The wrapper's channel to its native SDK. Only wrappers of a native SDK set this. */
+  bridge?: BridgeTransport;
 }

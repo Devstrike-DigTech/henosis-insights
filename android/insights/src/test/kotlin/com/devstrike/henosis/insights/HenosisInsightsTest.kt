@@ -30,6 +30,7 @@ class HenosisInsightsTest {
             transport,
             DirectWorker(),
             FakeClock(T0),
+            startupGraceMs = 0,
         )
 
     private fun FakeTransport.callCounts(): Int =

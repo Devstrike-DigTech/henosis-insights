@@ -93,7 +93,7 @@ class FaultInjectionTest {
         transport: Transport = FakeTransport(),
         worker: Worker = DirectWorker(),
         clock: Clock = FakeClock(T0),
-    ): InsightsClient = HenosisInsights.start(platform, testConfig(), transport, worker, clock)
+    ): InsightsClient = HenosisInsights.start(platform, testConfig(), transport, worker, clock, startupGraceMs = 0)
 
     @Test
     fun `calls before start and after stop are no-ops`() {
@@ -125,7 +125,7 @@ class FaultInjectionTest {
         val transport = FakeTransport(failure = Boom())
         exercise(start(transport = transport))
         transport.failure = OutOfMemoryError("injected")
-        exercise(HenosisInsights.start(FakePlatform(File(dir, "b")), testConfig(sdkName = "other"), transport, DirectWorker(), FakeClock(T0)))
+        exercise(HenosisInsights.start(FakePlatform(File(dir, "b")), testConfig(sdkName = "other"), transport, DirectWorker(), FakeClock(T0), startupGraceMs = 0))
     }
 
     @Test

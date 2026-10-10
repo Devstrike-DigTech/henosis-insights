@@ -25,7 +25,7 @@ class EngineTest {
         t: Transport = transport,
     ): Engine {
         platform = p
-        return Engine(config, p, t, DirectWorker(), clock).also { it.start() }
+        return Engine(config, p, t, DirectWorker(), clock, startupGraceMs = 0).also { it.start() }
     }
 
     private fun lastEvents(): List<JSONObject> {

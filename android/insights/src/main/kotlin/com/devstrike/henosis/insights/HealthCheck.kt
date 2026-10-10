@@ -14,6 +14,11 @@ public enum class HealthDetail(internal val wire: String) {
     PERMISSION_MISSING("permission_missing"),
     UNSUPPORTED_PLATFORM("unsupported_platform"),
     OTHER("other"),
+    ;
+
+    internal companion object {
+        fun fromWire(value: String?): HealthDetail? = entries.firstOrNull { it.wire == value }
+    }
 }
 
 /**

@@ -103,6 +103,28 @@ final class MemoryInsightsStorage implements InsightsStorage {
   void delete(String key) => values.remove(key);
 }
 
+/// How the client reports. See docs/bridge-protocol.md.
+enum InsightsMode {
+  /// Bridge when [InsightsConfig.bridge] is set and the native client is running; otherwise direct.
+  auto,
+
+  /// Upload batches itself.
+  direct,
+
+  /// Forward everything to the native client through [InsightsConfig.bridge]; never upload.
+  bridged,
+}
+
+/// Supplied by a wrapper package (a Flutter plugin around a native SDK) over its own MethodChannel.
+/// The native side calls `HenosisInsights.bridge.isRunning` and `HenosisInsights.bridge.receive`.
+abstract interface class BridgeTransport {
+  /// Whether the native Insights client runs for this write key and SDK.
+  FutureOr<bool> isNativeRunning(String writeKey, String sdkName);
+
+  /// Deliver one bridge message (JSON, schema/bridge-v1.json) to the native client.
+  FutureOr<void> send(String message);
+}
+
 /// Configuration a vendor SDK passes once to [HenosisInsights.start].
 final class InsightsConfig {
   const InsightsConfig({
@@ -117,6 +139,8 @@ final class InsightsConfig {
     this.storage,
     this.platform,
     this.debug = false,
+    this.mode = InsightsMode.auto,
+    this.bridge,
   });
 
   static const String defaultEndpoint = 'https://in.insights.henosis.dev/v1/batches';
@@ -148,4 +172,10 @@ final class InsightsConfig {
 
   /// Print Insights' own failures. Never prints payload contents.
   final bool debug;
+
+  /// [InsightsMode.auto] by default: bridged inside a wrapper whose native SDK runs Insights.
+  final InsightsMode mode;
+
+  /// The wrapper's channel to its native SDK. Only wrappers of a native SDK set this.
+  final BridgeTransport? bridge;
 }

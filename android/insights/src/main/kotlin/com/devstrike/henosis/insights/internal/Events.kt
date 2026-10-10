@@ -64,6 +64,15 @@ internal object Events {
 
     data class Frame(val cls: String, val fn: String, val line: Int)
 
+    /** A Flutter / React Native / web wrapper that forwards its events to this native client. */
+    data class Wrapper(val kind: String, val version: String?) {
+        fun toJson(): JSONObject = JSONObject().put("kind", kind).also { o -> version?.let { o.put("version", it) } }
+
+        companion object {
+            val KINDS = setOf("flutter", "react-native", "web", "node", "other")
+        }
+    }
+
     /** Keep only frames inside the vendor's own packages. App frames are never reported. */
     fun frames(throwable: Throwable?, prefixes: List<String>): List<Frame> {
         if (throwable == null || prefixes.isEmpty()) return emptyList()
@@ -92,6 +101,7 @@ internal object Events {
         customerKey: String,
         sentAt: Long,
         events: List<JSONObject>,
+        wrapper: Wrapper? = null,
     ): JSONObject {
         val device = JSONObject().put("os", "android")
         Names.version(platform.osVersion)?.let { device.put("osVersion", it) }
@@ -103,9 +113,10 @@ internal object Events {
         return JSONObject()
             .put("schema", 1)
             .put("writeKey", config.writeKey)
-            .put("client", JSONObject().put("lang", "kotlin").put("version", clientVersion).put("mode", "native"))
+            // A wrapper that registered over the bridge makes this a bridged stream for that wrapper.
+            .put("client", JSONObject().put("lang", "kotlin").put("version", clientVersion).put("mode", if (wrapper != null) "bridged" else "native"))
             .put("sdk", JSONObject().put("name", Names.sdkName(config.sdkName)).put("version", Names.version(config.sdkVersion) ?: "0"))
-            .put("wrapper", JSONObject().put("kind", "native"))
+            .put("wrapper", wrapper?.toJson() ?: JSONObject().put("kind", "native"))
             .put("customerKey", customerKey)
             .put("app", app)
             .put("device", device)

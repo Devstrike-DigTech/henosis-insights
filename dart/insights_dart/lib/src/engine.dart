@@ -25,6 +25,7 @@ final class EngineDeps {
     required this.envOptOut,
     this.onPageHide,
     this.refinePlatform,
+    this.probeDelays = const [Duration.zero, Duration(milliseconds: 500), Duration(seconds: 2)],
   });
 
   final Transport transport;
@@ -36,6 +37,9 @@ final class EngineDeps {
 
   /// Fills platform fields that need asynchronous work (e.g. Android's OS version), off the caller's path.
   final Future<PlatformInfo> Function(PlatformInfo platform)? refinePlatform;
+
+  /// When `auto` mode asks the native client whether it is running (each delay, then a probe).
+  final List<Duration> probeDelays;
 }
 
 String _iso(int ms) => DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toIso8601String();
@@ -65,6 +69,11 @@ final class Engine {
   PlatformInfo _platform;
   late final Future<void> loaded;
 
+  InsightsMode? _active;
+  final Map<String, int> _bridgeCalls = {};
+  final Map<String, int> _bridgeDeprecated = {};
+  final List<Map<String, Object?>> _bridgeEvents = [];
+  bool _forwardScheduled = false;
   bool _ready = false;
   bool _stopped = false;
   bool _enabled = false;
@@ -86,10 +95,16 @@ final class Engine {
 
   String get _stateKey => '$_scope:state';
 
+  /// `direct` or `bridged` once decided; null while `auto` mode is still probing.
+  InsightsMode? get activeMode => _active;
+
+  bool get _bridged => _active == InsightsMode.bridged;
+
   // ---- public entry points --------------------------------------------------------------------
 
   void countCall(String method) => _run(() {
         final m = Names.method(method);
+        if (_bridged) return _bridgeCount(_bridgeCalls, m);
         if (!_calls.containsKey(m) && _calls.length >= _maxCounts) return;
         if (_windowFrom == 0) _windowFrom = deps.now();
         _calls[m] = (_calls[m] ?? 0) + 1;
@@ -99,25 +114,30 @@ final class Engine {
   void reportError(String method, String code, [Object? error, StackTrace? stackTrace]) => _run(() {
         final trace = stackTrace ?? (error is Error ? error.stackTrace : null);
         final frames = sdkFrames(trace, _prefixes);
-        _enqueue({
+        final event = <String, Object?>{
           'kind': 'error',
           'method': Names.method(method),
           'code': Names.code(code),
-          'layer': 'native',
+          // Inside a wrapper of a native SDK, this client's errors come from the wrapper layer.
+          'layer': _bridged ? 'wrapper' : 'native',
           'frames': [
             for (final f in frames) {'cls': f.cls, 'fn': f.fn, 'line': f.line}
           ],
-        });
+        };
+        if (_bridged) return _bridgeEvent(event);
+        _enqueue(event);
         _onActivity();
       });
 
   void check(HealthCheck result) => _run(() {
+        if (_bridged) return _bridgeEvent(_health(result.name, result.ok, result.detail));
         _enqueue(_health(result.name, result.ok, result.detail));
         _onActivity();
       });
 
   void markDeprecated(String method) => _run(() {
         final m = Names.method(method);
+        if (_bridged) return _bridgeCount(_bridgeDeprecated, m);
         if (!_deprecated.containsKey(m) && _deprecated.length >= _maxCounts) return;
         _deprecated[m] = (_deprecated[m] ?? 0) + 1;
         _onActivity();
@@ -127,6 +147,10 @@ final class Engine {
   Future<void> flush({bool keepalive = false}) {
     final done = Completer<void>();
     _run(() {
+      if (_bridged) {
+        _forward().whenComplete(done.complete);
+        return;
+      }
       _heartbeatIfDue();
       _maybeUpload(force: true, keepalive: keepalive).whenComplete(done.complete);
     }, onDropped: done.complete);
@@ -146,8 +170,11 @@ final class Engine {
         _calls = {};
         _deprecated = {};
         _windowFrom = 0;
+        _bridgeCalls.clear();
+        _bridgeDeprecated.clear();
+        _bridgeEvents.clear();
       }
-      _scheduleSave();
+      if (!_bridged) _scheduleSave();
     }, always: true);
   }
 
@@ -222,9 +249,16 @@ final class Engine {
           _platform = await refine(_platform);
         } catch (_) {}
       }
-      final state = await _read(_stateKey);
       final host = await _read(hostEnabledKey);
       if (host == 'false') _hostEnabled = false;
+      _active = await _resolveMode();
+      if (_bridged) {
+        // The native client owns storage, sampling, init and heartbeat. Register the wrapper now.
+        _enabled = config.bridge != null && _computeEnabled();
+        if (_enabled) unawaited(_forward());
+        return;
+      }
+      final state = await _read(_stateKey);
       if (state != null) _restore(state);
       _enabled = _computeEnabled();
       if (_enabled) {
@@ -241,11 +275,89 @@ final class Engine {
       for (final op in ops) {
         op();
       }
-      if (_enabled && !_stopped) {
+      if (_enabled && !_stopped && !_bridged) {
         try {
           _unregisterPageHide = deps.onPageHide?.call(() => unawaited(flush(keepalive: true)));
         } catch (_) {}
       }
+    }
+  }
+
+  Future<InsightsMode> _resolveMode() async {
+    final bridge = config.bridge;
+    switch (config.mode) {
+      case InsightsMode.direct:
+        return InsightsMode.direct;
+      case InsightsMode.bridged:
+        return InsightsMode.bridged;
+      case InsightsMode.auto:
+        if (bridge == null) return InsightsMode.direct;
+        for (final delay in deps.probeDelays) {
+          if (delay > Duration.zero) await Future<void>.delayed(delay);
+          if (await _probe(bridge)) return InsightsMode.bridged;
+        }
+        return InsightsMode.direct;
+    }
+  }
+
+  Future<bool> _probe(BridgeTransport bridge) async {
+    try {
+      return await Future<bool>.value(bridge.isNativeRunning(config.writeKey, config.sdkName))
+          .timeout(const Duration(seconds: 2));
+    } catch (e) {
+      log('bridge probe failed', e);
+      return false;
+    }
+  }
+
+  void _bridgeCount(Map<String, int> into, String method) {
+    if (!into.containsKey(method) && into.length >= _maxCounts) return;
+    into[method] = ((into[method] ?? 0) + 1).clamp(1, 1000000);
+    _scheduleForward();
+  }
+
+  void _bridgeEvent(Map<String, Object?> event) {
+    if (_bridgeEvents.length >= maxEventsPerBatch) _bridgeEvents.removeAt(0);
+    _bridgeEvents.add(event);
+    _scheduleForward();
+  }
+
+  void _scheduleForward() {
+    if (_forwardScheduled) return;
+    _forwardScheduled = true;
+    Timer.run(() {
+      _forwardScheduled = false;
+      unawaited(_forward());
+    });
+  }
+
+  /// Sends what has accumulated (or just the wrapper registration) to the native client.
+  Future<void> _forward() async {
+    final bridge = config.bridge;
+    if (bridge == null || !_enabled || _stopped) return;
+    final kind = _platform.merge(config.platform).wrapperKind;
+    final version = Names.version(config.wrapperVersion ?? config.sdkVersion);
+    final message = jsonEncode({
+      'bridge': 1,
+      'writeKey': config.writeKey,
+      'sdkName': config.sdkName,
+      'wrapper': {
+        'kind': const {'flutter', 'react-native', 'web', 'node'}.contains(kind) ? kind : 'other',
+        if (version != null) 'version': version,
+      },
+      'client': {'lang': 'dart', 'version': clientVersion},
+      'calls': Map.of(_bridgeCalls),
+      'deprecated': Map.of(_bridgeDeprecated),
+      'events': List.of(_bridgeEvents),
+    });
+    _bridgeCalls.clear();
+    _bridgeDeprecated.clear();
+    _bridgeEvents.clear();
+    try {
+      await bridge.send(message);
+    } catch (e) {
+      // Never fall back to sending directly: that would make a second stream.
+      log('bridge send failed', e);
     }
   }
 
@@ -274,6 +386,7 @@ final class Engine {
 
   bool _computeEnabled() {
     if (!_hostEnabled || deps.envOptOut()) return false;
+    if (_bridged) return true; // sampling is the native client's decision
     final rate = config.sampleRate.isNaN ? 0.0 : config.sampleRate.clamp(0.0, 1.0);
     if (rate <= 0) return false;
     if (rate >= 1) return true;

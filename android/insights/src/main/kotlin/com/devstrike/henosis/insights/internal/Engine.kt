@@ -1,6 +1,7 @@
 package com.devstrike.henosis.insights.internal
 
 import com.devstrike.henosis.insights.HealthCheck
+import com.devstrike.henosis.insights.HealthDetail
 import com.devstrike.henosis.insights.HenosisInsights
 import com.devstrike.henosis.insights.InsightsConfig
 import org.json.JSONObject
@@ -22,7 +23,14 @@ internal class Engine(
     private val transport: Transport,
     private val worker: Worker,
     private val clock: Clock,
+    /**
+     * At the start of a session the first automatic upload waits this long unless the wrapper is
+     * already known, so a Flutter / React Native wrapper can register over the bridge first and the
+     * first batch is tagged with it. `flush()` is never delayed.
+     */
+    private val startupGraceMs: Long = STARTUP_GRACE_MS,
 ) {
+    private var sessionStart = 0L
     private val prefixes = config.sdkPackagePrefixes.filter { it.isNotBlank() }
     private val customerKey: String
     private val customerKeyOk: Boolean
@@ -37,6 +45,7 @@ internal class Engine(
     private var nextAttemptAt = 0L
     @Volatile private var enabled = false
     @Volatile private var stopped = false
+    private var wrapper: Events.Wrapper? = null
 
     init {
         val (key, ok) = Names.customerKey(config.customerKey)
@@ -61,9 +70,11 @@ internal class Engine(
     // ---- public entry points: post to the worker ------------------------------------------------
 
     fun start() = post {
+        sessionStart = clock.now()
         enabled = computeEnabled()
         queue = EventQueue(if (enabled) File(platform.storageDir(), "queue.jsonl") else null, log = ::log)
         loadCounters()
+        loadWrapper()
         lastUploadAt = platform.prefs.get(PREF_LAST_UPLOAD)?.toLongOrNull() ?: 0L
         if (!enabled) {
             log("disabled (opt-out or sampled out)", null)
@@ -107,6 +118,88 @@ internal class Engine(
         deprecatedCounts[m] = (deprecatedCounts[m] ?: 0) + 1
         countersDirty = true
         onActivity()
+    }
+
+    /**
+     * A message forwarded by a Dart / TypeScript client running in bridged mode inside a wrapper
+     * (see docs/bridge-protocol.md). Parsed and applied on the worker; anything malformed or meant for
+     * another SDK is ignored. Wrapper errors are always tagged `layer: wrapper`.
+     */
+    fun receiveBridge(json: String) = post {
+        if (json.length > MAX_BRIDGE_CHARS) return@post
+        val msg = try {
+            JSONObject(json)
+        } catch (_: Throwable) {
+            return@post
+        }
+        if (msg.optInt("bridge", -1) != BRIDGE_PROTOCOL) return@post
+        if (msg.optString("writeKey") != config.writeKey || msg.optString("sdkName") != config.sdkName) return@post
+        msg.optJSONObject("wrapper")?.let { w ->
+            val kind = w.optString("kind")
+            if (kind in Events.Wrapper.KINDS) setWrapper(Events.Wrapper(kind, Names.version(w.optString("version").takeIf { it.isNotEmpty() })))
+        }
+        if (!enabled) return@post
+        mergeCounts(msg.optJSONObject("calls"), callCounts, startsWindow = true)
+        mergeCounts(msg.optJSONObject("deprecated"), deprecatedCounts, startsWindow = false)
+        val events = msg.optJSONArray("events")
+        if (events != null) {
+            for (i in 0 until minOf(events.length(), Events.MAX_EVENTS_PER_BATCH)) {
+                val e = events.optJSONObject(i) ?: continue
+                when (e.optString("kind")) {
+                    "error" -> enqueue(Events.error(e.optString("method"), e.optString("code"), "wrapper", bridgeFrames(e.optJSONArray("frames"))))
+                    "health" -> {
+                        val ok = e.optBoolean("ok", false)
+                        val detail = HealthDetail.fromWire(e.optString("detail")) ?: HealthDetail.OTHER
+                        enqueue(Events.health(HealthCheck.Custom(e.optString("check"), ok, detail)))
+                    }
+                    // init, heartbeat and calls belong to the native client; anything else is unknown.
+                    else -> Unit
+                }
+            }
+        }
+        onActivity()
+    }
+
+    private fun mergeCounts(obj: JSONObject?, into: HashMap<String, Int>, startsWindow: Boolean) {
+        if (obj == null) return
+        for (key in obj.keys()) {
+            val n = obj.optInt(key, 0).coerceIn(0, MAX_BRIDGE_COUNT)
+            if (n == 0) continue
+            val m = Names.method(key)
+            if (into.size >= Events.MAX_COUNTS && m !in into) continue
+            if (startsWindow && windowFrom == 0L) windowFrom = clock.now()
+            into[m] = ((into[m] ?: 0).toLong() + n).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            countersDirty = true
+        }
+    }
+
+    private fun bridgeFrames(arr: org.json.JSONArray?): List<Events.Frame> {
+        if (arr == null) return emptyList()
+        val out = ArrayList<Events.Frame>()
+        for (i in 0 until minOf(arr.length(), Events.MAX_FRAMES)) {
+            val f = arr.optJSONObject(i) ?: continue
+            val cls = Names.frameClass(f.optString("cls")) ?: continue
+            val fn = Names.frameFn(f.optString("fn").ifEmpty { "<anonymous>" }) ?: continue
+            out.add(Events.Frame(cls, fn, f.optInt("line", 0).coerceAtLeast(0)))
+        }
+        return out
+    }
+
+    private fun setWrapper(w: Events.Wrapper) {
+        if (w == wrapper) return
+        wrapper = w
+        platform.prefs.put(PREF_WRAPPER, w.toJson().toString())
+    }
+
+    /** The wrapper seen on an earlier launch, so this launch's first batch already carries it. */
+    private fun loadWrapper() {
+        try {
+            val raw = platform.prefs.get(PREF_WRAPPER) ?: return
+            val o = JSONObject(raw)
+            val kind = o.optString("kind")
+            if (kind in Events.Wrapper.KINDS) wrapper = Events.Wrapper(kind, Names.version(o.optString("version").takeIf { it.isNotEmpty() }))
+        } catch (_: Throwable) {
+        }
     }
 
     /** Host-app opt-out. Applies to every SDK in the app, so it lives in the app-wide store. */
@@ -207,6 +300,7 @@ internal class Engine(
         if (!hasPending()) return false
         if (now < nextAttemptAt) return false
         if (force) return true
+        if (wrapper == null && now - sessionStart < startupGraceMs) return false
         if (now - lastUploadAt >= MAX_INTERVAL_MS) return true
         return platform.isOnWifi() == true && now - lastAttemptAt >= MIN_WIFI_INTERVAL_MS
     }
@@ -218,7 +312,7 @@ internal class Engine(
         flushCountersToQueue(now)
         val events = queue.peek(Events.MAX_EVENTS_PER_BATCH).map { JSONObject(it) }
         if (events.isEmpty()) return
-        val batch = Events.batch(config, platform, HenosisInsights.VERSION, customerKey, now, events)
+        val batch = Events.batch(config, platform, HenosisInsights.VERSION, customerKey, now, events, wrapper)
         val body = batch.toString().toByteArray(Charsets.UTF_8)
         when (val result = transport.send(config.endpoint, config.writeKey, body)) {
             SendResult.Accepted -> {
@@ -296,11 +390,16 @@ internal class Engine(
     internal companion object {
         const val MAX_INTERVAL_MS = 6L * 60 * 60 * 1000
         const val MIN_WIFI_INTERVAL_MS = 60L * 1000
+        const val STARTUP_GRACE_MS = 5_000L
         const val RETRY_BACKOFF_MS = 5L * 60 * 1000
         const val PREF_HOST_ENABLED = "host_enabled"
         const val PREF_SAMPLE = "sample"
         const val PREF_HEARTBEAT_DAY = "heartbeat_day"
         const val PREF_LAST_UPLOAD = "last_upload"
         const val PREF_COUNTERS = "counters"
+        const val PREF_WRAPPER = "wrapper"
+        const val BRIDGE_PROTOCOL = 1
+        const val MAX_BRIDGE_CHARS = 1_000_000
+        const val MAX_BRIDGE_COUNT = 1_000_000
     }
 }

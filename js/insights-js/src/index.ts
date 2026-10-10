@@ -23,11 +23,13 @@ export function hashCustomerKey(rawKey: string): string {
   return sha256Hex(String(rawKey ?? ''));
 }
 export type {
+  BridgeTransport,
   DeviceClass,
   DeviceOs,
   HealthCheckResult,
   HealthDetail,
   InsightsConfig,
+  InsightsMode,
   InsightsStorage,
   PlatformInfo,
   WrapperKind,
@@ -69,6 +71,15 @@ export class InsightsClient {
       return this.engine?.isEnabled() ?? false;
     } catch {
       return false;
+    }
+  }
+
+  /** `direct` or `bridged` once decided (undefined while `auto` mode is still asking the native client). */
+  get activeMode(): 'direct' | 'bridged' | undefined {
+    try {
+      return this.engine?.activeMode;
+    } catch {
+      return undefined;
     }
   }
 
@@ -126,6 +137,7 @@ export function startWith(config: InsightsConfig, deps: Partial<EngineDeps> = {}
       random: deps.random ?? Math.random,
       envOptOut: deps.envOptOut ?? envOptOut,
       onPageHide: deps.onPageHide ?? onPageHide,
+      ...(deps.probeDelays ? { probeDelays: deps.probeDelays } : {}),
     });
     if (r.hostEnabled !== undefined) engine.setHostEnabled(r.hostEnabled);
     const client = new InsightsClient(engine);

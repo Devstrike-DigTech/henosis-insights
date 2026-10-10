@@ -20,11 +20,16 @@ export function callsEvent(from: number, to: number, counts: Map<string, number>
   return { kind: 'calls', from: iso(from), to: iso(to), counts: Object.fromEntries(top) };
 }
 
-export const errorEvent = (m: string, c: string, frames: Frame[]): Json => ({
+export const errorEvent = (
+  m: string,
+  c: string,
+  frames: Frame[],
+  layer: 'native' | 'wrapper' = 'native',
+): Json => ({
   kind: 'error',
   method: method(m),
   code: code(c),
-  layer: 'native',
+  layer,
   frames,
 });
 

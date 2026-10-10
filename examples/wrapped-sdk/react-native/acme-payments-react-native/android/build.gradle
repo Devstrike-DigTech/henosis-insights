@@ -1,0 +1,56 @@
+// Android side of the React Native wrapper. Follows React Native 0.87 library conventions.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+def getExtOrDefault(name, defaultValue) {
+    return rootProject.ext.has(name) ? rootProject.ext.get(name) : defaultValue
+}
+
+apply plugin: "com.android.library"
+
+// AGP 9 compiles Kotlin itself unless built-in Kotlin is turned off.
+def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0].toInteger()
+def builtInKotlin = providers.gradleProperty("android.builtInKotlin").map { it.toBoolean() }.getOrElse(true)
+if (agpMajor <= 8 || !builtInKotlin) {
+    apply plugin: "org.jetbrains.kotlin.android"
+}
+apply plugin: "com.facebook.react"
+
+android {
+    namespace "com.acme.payments.reactnative"
+    compileSdk getExtOrDefault("compileSdkVersion", 37)
+
+    defaultConfig {
+        minSdk getExtOrDefault("minSdkVersion", 24)
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += ["generated/java", "generated/jni"]
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    // The native Acme Payments SDK and Henosis Insights, published from android/ with
+    // `./gradlew :insights:publishToMavenLocal :sample-sdk:publishToMavenLocal`.
+    mavenLocal()
+}
+
+dependencies {
+    implementation "com.facebook.react:react-android"
+    implementation "com.acme:payments:4.2.0"
+    implementation "com.devstrike.henosis:insights:0.1.0"
+}
+
+react {
+    jsRootDir = file("../src/")
+    libraryName = "AcmePaymentsSpec"
+    codegenJavaPackageName = "com.acme.payments.reactnative"
+}

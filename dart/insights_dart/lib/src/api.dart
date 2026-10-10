@@ -46,6 +46,15 @@ final class InsightsClient {
       return false;
     }
   }
+
+  /// `direct` or `bridged` once decided (null while `auto` mode is still asking the native client).
+  InsightsMode? get activeMode {
+    try {
+      return _engine?.activeMode;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 void _guard(void Function() f) {

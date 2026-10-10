@@ -38,6 +38,11 @@ public object HenosisInsights {
     /** Host opt-out requested before any engine could persist it; applied at the next start. */
     @Volatile private var pendingHostEnabled: Boolean? = null
 
+    /** Receiver for wrapper packages running the Dart / TypeScript client in bridged mode. */
+    @JvmStatic
+    public val bridge: InsightsBridge
+        get() = InsightsBridge
+
     /**
      * Start reporting for one SDK and return its handle. Calling it again for the same write key and
      * SDK name returns the running handle. Never throws; on failure returns a no-op handle.
@@ -124,6 +129,7 @@ public object HenosisInsights {
         transport: Transport,
         worker: Worker,
         clock: Clock,
+        startupGraceMs: Long = Engine.STARTUP_GRACE_MS,
     ): InsightsClient =
         synchronized(clients) {
             val key = "${config.writeKey}|${config.sdkName}"
@@ -131,13 +137,18 @@ public object HenosisInsights {
                 worker.shutdown()
                 return it
             }
-            val engine = Engine(config, platform, transport, worker, clock)
+            val engine = Engine(config, platform, transport, worker, clock, startupGraceMs)
             pendingHostEnabled?.let { engine.setHostEnabled(it) }
             engine.start()
             InsightsClient(engine).also { clients[key] = it }
         }
 
     internal fun runningCount(): Int = synchronized(clients) { clients.size }
+
+    internal fun engineFor(writeKey: String, sdkName: String): Engine? =
+        synchronized(clients) { clients["$writeKey|$sdkName"]?.engine }
+
+    internal fun runningEngines(): List<Engine> = synchronized(clients) { clients.values.mapNotNull { it.engine } }
 
     internal fun resetForTests() {
         stop()

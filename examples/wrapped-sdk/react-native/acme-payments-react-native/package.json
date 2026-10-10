@@ -1,0 +1,25 @@
+{
+  "name": "@acme/payments-react-native",
+  "version": "0.9.4",
+  "private": true,
+  "description": "React Native wrapper (TurboModule) of the fictional Acme Payments Android SDK. Shows Henosis Insights bridged mode (M4).",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "types": "src/index.ts",
+  "files": ["src", "android", "!android/build", "!android/.gradle", "react-native.config.js"],
+  "peerDependencies": {
+    "react-native": ">=0.80"
+  },
+  "dependencies": {
+    "@devstrike/insights-js": "file:../../../../js/insights-js"
+  },
+  "codegenConfig": {
+    "name": "AcmePaymentsSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.acme.payments.reactnative"
+    }
+  }
+}

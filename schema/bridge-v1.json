@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://insights.henosis.dev/schema/bridge-v1.json",
+  "title": "Henosis Insights bridge message (protocol 1)",
+  "description": "Sent by a Dart or TypeScript client in bridged mode to the native client of the SDK it wraps, over the wrapper's own platform channel. Never sent to the ingest. The native client merges it into its single stream and tags errors with layer: wrapper.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bridge", "writeKey", "sdkName", "wrapper", "client", "calls", "deprecated", "events"],
+  "properties": {
+    "bridge": { "const": 1 },
+    "writeKey": { "type": "string", "pattern": "^hi_(live|test)_[a-f0-9]{32}$" },
+    "sdkName": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "wrapper": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["flutter", "react-native", "web", "node", "other"] },
+        "version": { "type": "string", "pattern": "^[A-Za-z0-9+._-]{1,64}$" }
+      }
+    },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lang", "version"],
+      "properties": {
+        "lang": { "enum": ["dart", "ts"] },
+        "version": { "type": "string", "pattern": "^[A-Za-z0-9+._-]{1,64}$" }
+      }
+    },
+    "calls": { "$ref": "#/$defs/counts" },
+    "deprecated": { "$ref": "#/$defs/counts" },
+    "events": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "oneOf": [{ "$ref": "#/$defs/error" }, { "$ref": "#/$defs/health" }] }
+    }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z_$][A-Za-z0-9_.$-]{0,127}$" },
+      "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "method", "code", "layer", "frames"],
+      "properties": {
+        "kind": { "const": "error" },
+        "method": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_.$-]{0,127}$" },
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+        "layer": { "const": "wrapper" },
+        "frames": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cls", "fn", "line"],
+            "properties": {
+              "cls": { "type": "string", "pattern": "^[A-Za-z_$@][A-Za-z0-9_.$<>/@-]{0,255}$" },
+              "fn": { "type": "string", "pattern": "^[A-Za-z_$<][A-Za-z0-9_.$<>-]{0,127}$" },
+              "line": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "check", "ok"],
+      "properties": {
+        "kind": { "const": "health" },
+        "check": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "ok": { "type": "boolean" },
+        "detail": { "enum": ["missing", "invalid_format", "not_initialized", "wrong_thread", "permission_missing", "unsupported_platform", "other"] }
+      }
+    }
+  }
+}

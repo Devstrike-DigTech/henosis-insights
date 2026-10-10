@@ -79,5 +79,6 @@ jobs:
         run: dart run tool/check_size.dart
       - name: Analyze the example SDK
         working-directory: dart/examples/acme_kyc
-        run: dart pub get && dart analyze --fatal-infos
+        # --no-example: the Flutter example app needs the Flutter SDK; this job checks the pure-Dart SDK.
+        run: dart pub get --no-example && dart analyze --fatal-infos lib
 
